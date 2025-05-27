@@ -1,7 +1,5 @@
 # 🛍️ ERP Product Management System 🛍️
 
-![Database Schema Diagram](https://i.imgur.com/example-placeholder.jpg)
-
 ## 🌟 Welcome to Our ERP Project! 🌟
 
 Hello there, fellow database enthusiasts! Welcome to the **most exciting ERP product management system** you'll ever lay your eyes on! This masterpiece was crafted with love, caffeine, and a touch of database magic by our incredible team for the Advanced Database Systems class.
@@ -183,14 +181,6 @@ Defines types of attributes with validation rules.
    INSERT INTO product_item (brand_id, category_id, product_name, product_description, sku, url_slug, base_price)
    VALUES (1, 1, 'Amazing Gadget', 'This gadget will change your life!', 'AG-001', 'amazing-gadget', 499.99);
    ```
-
-## 🏆 Group 596 Members
-
-- 
-- 
-- 
-- 
-- 
 
 ## 🎓 Course Information
 
