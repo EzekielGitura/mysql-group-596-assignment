@@ -1,30 +1,25 @@
 -- product image table
 
 CREATE TABLE product_image (
-    image_id SERIAL PRIMARY KEY,
-    product_item_id INTEGER NOT NULL,
+    image_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_item_id INT NOT NULL,
     image_url VARCHAR(500) NOT NULL,
     image_alt_text VARCHAR(255),
     display_order SMALLINT DEFAULT 0,
     is_primary BOOLEAN DEFAULT FALSE,
-    image_width INTEGER,
-    image_height INTEGER,
-    file_size_kb INTEGER,
+    image_width INT,
+    image_height INT,
+    file_size_kb INT,
     file_type VARCHAR(10),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     caption VARCHAR(255),
     copyright_info VARCHAR(255),
-    
-    -- Constraints
     CONSTRAINT fk_product_item FOREIGN KEY (product_item_id) 
         REFERENCES product_item(product_item_id) ON DELETE CASCADE,
     CONSTRAINT chk_file_type CHECK (file_type IN ('jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'))
 );
 
--- Index for faster product item lookups
 CREATE INDEX idx_product_image_product_item_id ON product_image(product_item_id);
 
 -- Ensure only one primary image per product
@@ -48,18 +43,18 @@ FOR EACH ROW
 EXECUTE FUNCTION update_product_image_timestamp();
 
 -- Function to ensure only one primary image
-CREATE OR REPLACE FUNCTION ensure_single_primary_image()
-RETURNS TRIGGER AS $$
+-- Only one is_primary per product_item_id
+-- Only one is_primary per product_item_id
+DELIMITER $$
+CREATE TRIGGER trg_single_primary_image BEFORE INSERT ON product_image
+FOR EACH ROW
 BEGIN
-    IF NEW.is_primary = TRUE THEN
-        UPDATE product_image
-        SET is_primary = FALSE
-        WHERE product_item_id = NEW.product_item_id
-        AND image_id != NEW.image_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  IF NEW.is_primary = TRUE THEN
+    UPDATE product_image SET is_primary = FALSE
+    WHERE product_item_id = NEW.product_item_id;
+  END IF;
+END $$
+DELIMITER ;
 
 -- Trigger to maintain single primary image
 CREATE TRIGGER trg_single_primary_image
@@ -72,30 +67,25 @@ EXECUTE FUNCTION ensure_single_primary_image();
 -- product category table
 
 CREATE TABLE product_category (
-    category_id SERIAL PRIMARY KEY,
-    parent_category_id INTEGER,
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_category_id INT,
     category_name VARCHAR(100) NOT NULL,
     category_description TEXT,
     category_image_url VARCHAR(500),
     url_slug VARCHAR(100) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    display_order INTEGER DEFAULT 0,
+    display_order INT DEFAULT 0,
     meta_title VARCHAR(255),
     meta_description VARCHAR(500),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Constraints
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_parent_category FOREIGN KEY (parent_category_id) 
         REFERENCES product_category(category_id) ON DELETE RESTRICT,
     CONSTRAINT uq_category_name UNIQUE (category_name),
     CONSTRAINT uq_url_slug UNIQUE (url_slug)
 );
 
--- Index for hierarchical queries (finding children categories)
 CREATE INDEX idx_product_category_parent ON product_category(parent_category_id);
-
--- Index for URL lookups
 CREATE INDEX idx_product_category_slug ON product_category(url_slug);
 
 -- Function for updating timestamp
@@ -161,33 +151,48 @@ $$ LANGUAGE plpgsql;
 -- product_item table
 
 CREATE TABLE product_item (
-    product_item_id SERIAL PRIMARY KEY,
-    brand_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
+    product_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    brand_id INT NOT NULL,
+    category_id INT NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     product_description TEXT,
-    product_specs JSONB,
+    product_specs JSON,
     sku VARCHAR(50) NOT NULL,
     url_slug VARCHAR(255) NOT NULL,
-    base_price DECIMAL(15, 2) NOT NULL,
+    base_price DECIMAL(15,2) NOT NULL,
     currency_code CHAR(3) DEFAULT 'USD',
-    tax_rate DECIMAL(5, 2) DEFAULT 0.00,
-    weight_kg DECIMAL(10, 3),
-    length_cm DECIMAL(10, 2),
-    width_cm DECIMAL(10, 2),
-    height_cm DECIMAL(10, 2),
+    tax_rate DECIMAL(5,2) DEFAULT 0.00,
+    weight_kg DECIMAL(10,3),
+    length_cm DECIMAL(10,2),
+    width_cm DECIMAL(10,2),
+    height_cm DECIMAL(10,2),
     is_featured BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     stock_status VARCHAR(20) DEFAULT 'in_stock',
     meta_title VARCHAR(255),
     meta_description VARCHAR(500),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     release_date DATE,
     discontinued_date DATE,
-    average_rating DECIMAL(3, 2),
-    review_count INTEGER DEFAULT 0,
-    search_keywords TEXT[],
+    average_rating DECIMAL(3,2),
+    review_count INT DEFAULT 0,
+    search_keywords JSON,
+    CONSTRAINT fk_brand FOREIGN KEY (brand_id) 
+        REFERENCES brand(brand_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_category FOREIGN KEY (category_id) 
+        REFERENCES product_category(category_id) ON DELETE RESTRICT,
+    CONSTRAINT uq_product_sku UNIQUE (sku),
+    CONSTRAINT uq_product_url_slug UNIQUE (url_slug),
+    CONSTRAINT chk_stock_status CHECK (stock_status IN ('in_stock', 'out_of_stock', 'backorder', 'discontinued', 'coming_soon')),
+    CONSTRAINT chk_rating CHECK (average_rating BETWEEN 0 AND 5 OR average_rating IS NULL)
+);
+
+CREATE INDEX idx_product_item_brand ON product_item(brand_id);
+CREATE INDEX idx_product_item_category ON product_item(category_id); 
+CREATE INDEX idx_product_item_active ON product_item(is_active);
+CREATE INDEX idx_product_item_featured ON product_item(is_featured);
+CREATE INDEX idx_product_item_stock ON product_item(stock_status);
     
     -- Constraints
     CONSTRAINT fk_brand FOREIGN KEY (brand_id) 
@@ -256,11 +261,102 @@ EXECUTE FUNCTION format_product_slug();
 
 CREATE TABLE product (
     product_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_sku VARCHAR(50) NOT NULL COMMENT 'Stock Keeping Unit - unique product identifier',
+    product_sku VARCHAR(50) NOT NULL,
     product_name VARCHAR(255) NOT NULL,
-    product_slug VARCHAR(255) NOT NULL COMMENT 'URL-friendly version of the product name',
+    product_slug VARCHAR(255) NOT NULL,
     short_description VARCHAR(500) DEFAULT NULL,
     long_description TEXT DEFAULT NULL,
+    brand_id INT NOT NULL,
+    primary_category_id INT NOT NULL,
+    tax_class_id INT DEFAULT NULL,
+    base_cost DECIMAL(12,4) NOT NULL,
+    base_price DECIMAL(12,4) NOT NULL,
+    msrp DECIMAL(12,4) DEFAULT NULL,
+    map_price DECIMAL(12,4) DEFAULT NULL,
+    clearance_price DECIMAL(12,4) DEFAULT NULL,
+    price_tier_id INT DEFAULT NULL,
+    has_variants BOOLEAN DEFAULT FALSE,
+    manage_inventory BOOLEAN DEFAULT TRUE,
+    min_order_quantity INT DEFAULT 1,
+    max_order_quantity INT DEFAULT NULL,
+    reorder_point INT DEFAULT NULL,
+    reorder_quantity INT DEFAULT NULL,
+    lead_time_days INT DEFAULT NULL,
+    weight DECIMAL(10,4) DEFAULT NULL,
+    length DECIMAL(10,4) DEFAULT NULL,
+    width DECIMAL(10,4) DEFAULT NULL,
+    height DECIMAL(10,4) DEFAULT NULL,
+    dimension_unit ENUM('cm', 'in', 'm') DEFAULT 'cm',
+    weight_unit ENUM('kg', 'g', 'lb', 'oz') DEFAULT 'kg',
+    is_shippable BOOLEAN DEFAULT TRUE,
+    free_shipping BOOLEAN DEFAULT FALSE,
+    shipping_class_id INT DEFAULT NULL,
+    additional_shipping_fee DECIMAL(10,4) DEFAULT 0.00,
+    is_digital BOOLEAN DEFAULT FALSE,
+    digital_file_path VARCHAR(500) DEFAULT NULL,
+    download_limit INT DEFAULT NULL,
+    download_expiry_days INT DEFAULT NULL,
+    status ENUM('draft', 'active', 'inactive', 'discontinued', 'archived') DEFAULT 'draft',
+    visibility ENUM('visible', 'catalog', 'search', 'hidden') DEFAULT 'visible',
+    is_featured BOOLEAN DEFAULT FALSE,
+    searchable BOOLEAN DEFAULT TRUE,
+    listed_on_marketplace BOOLEAN DEFAULT TRUE,
+    meta_title VARCHAR(255) DEFAULT NULL,
+    meta_description VARCHAR(500) DEFAULT NULL,
+    meta_keywords VARCHAR(255) DEFAULT NULL,
+    primary_image_id BIGINT DEFAULT NULL,
+    video_url VARCHAR(255) DEFAULT NULL,
+    primary_supplier_id INT DEFAULT NULL,
+    secondary_supplier_id INT DEFAULT NULL,
+    manufacturer_id INT DEFAULT NULL,
+    manufacturer_part_number VARCHAR(100) DEFAULT NULL,
+    country_of_origin VARCHAR(2) DEFAULT NULL,
+    warranty_months INT DEFAULT NULL,
+    return_policy_id INT DEFAULT NULL,
+    quality_control_required BOOLEAN DEFAULT FALSE,
+    serialized BOOLEAN DEFAULT FALSE,
+    batch_tracked BOOLEAN DEFAULT FALSE,
+    expiry_tracked BOOLEAN DEFAULT FALSE,
+    barcode_upc VARCHAR(20) DEFAULT NULL,
+    barcode_ean VARCHAR(20) DEFAULT NULL,
+    barcode_isbn VARCHAR(20) DEFAULT NULL,
+    approved_by INT DEFAULT NULL,
+    approval_date DATETIME DEFAULT NULL,
+    safety_stock INT DEFAULT 0,
+    certification_ids JSON DEFAULT NULL,
+    restricted_in_countries JSON DEFAULT NULL,
+    hazmat_class VARCHAR(50) DEFAULT NULL,
+    related_products JSON DEFAULT NULL,
+    upsell_products JSON DEFAULT NULL,
+    cross_sell_products JSON DEFAULT NULL,
+    internal_notes TEXT DEFAULT NULL,
+    procurement_notes TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    published_at DATETIME DEFAULT NULL,
+    deleted_at DATETIME DEFAULT NULL,
+    created_by INT NOT NULL,
+    updated_by INT DEFAULT NULL,
+    UNIQUE INDEX idx_product_sku (product_sku),
+    UNIQUE INDEX idx_product_slug (product_slug),
+    INDEX idx_product_name (product_name),
+    INDEX idx_brand_id (brand_id),
+    INDEX idx_primary_category_id (primary_category_id),
+    INDEX idx_status (status),
+    INDEX idx_visibility (visibility),
+    INDEX idx_is_featured (is_featured),
+    INDEX idx_created_at (created_at),
+    INDEX idx_published_at (published_at),
+    FOREIGN KEY (brand_id) REFERENCES brand(brand_id) ON DELETE RESTRICT,
+    FOREIGN KEY (primary_category_id) REFERENCES product_category(category_id) ON DELETE RESTRICT,
+    FOREIGN KEY (primary_supplier_id) REFERENCES supplier(supplier_id) ON DELETE SET NULL,
+    FOREIGN KEY (tax_class_id) REFERENCES tax_class(tax_class_id) ON DELETE SET NULL,
+    FOREIGN KEY (shipping_class_id) REFERENCES shipping_class(shipping_class_id) ON DELETE SET NULL,
+    FOREIGN KEY (return_policy_id) REFERENCES return_policy(return_policy_id) ON DELETE SET NULL,
+    FOREIGN KEY (primary_image_id) REFERENCES product_image(image_id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES admin_user(admin_id) ON DELETE RESTRICT,
+    FOREIGN KEY (updated_by) REFERENCES admin_user(admin_id) ON DELETE SET NULL
+);
     
     -- Classification
     brand_id INT NOT NULL,
@@ -376,24 +472,13 @@ CREATE TABLE product (
     INDEX idx_is_featured (is_featured),
     INDEX idx_created_at (created_at),
     INDEX idx_published_at (published_at),
-    
-    -- Foreign keys
-    FOREIGN KEY (brand_id) REFERENCES brand(brand_id) ON DELETE RESTRICT,
-    FOREIGN KEY (primary_category_id) REFERENCES product_category(category_id) ON DELETE RESTRICT,
-    FOREIGN KEY (primary_supplier_id) REFERENCES supplier(supplier_id) ON DELETE SET NULL,
-    FOREIGN KEY (tax_class_id) REFERENCES tax_class(tax_class_id) ON DELETE SET NULL,
-    FOREIGN KEY (shipping_class_id) REFERENCES shipping_class(shipping_class_id) ON DELETE SET NULL,
-    FOREIGN KEY (return_policy_id) REFERENCES return_policy(return_policy_id) ON DELETE SET NULL,
-    FOREIGN KEY (primary_image_id) REFERENCES product_image(image_id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES admin_user(admin_id) ON DELETE RESTRICT,
-    FOREIGN KEY (updated_by) REFERENCES admin_user(admin_id) ON DELETE SET NULL
 ) 
 
 
 -- brand table
 
 CREATE TABLE brand (
-    brand_id SERIAL PRIMARY KEY,
+    brand_id INT AUTO_INCREMENT PRIMARY KEY,
     brand_name VARCHAR(100) NOT NULL,
     brand_description TEXT,
     logo_url VARCHAR(500),
@@ -406,21 +491,16 @@ CREATE TABLE brand (
     brand_color VARCHAR(7),
     meta_title VARCHAR(255),
     meta_description VARCHAR(500),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Constraints
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uq_brand_name UNIQUE (brand_name),
     CONSTRAINT uq_brand_slug UNIQUE (url_slug),
-    CONSTRAINT chk_founded_year CHECK (founded_year >= 1000 AND founded_year <= EXTRACT(YEAR FROM CURRENT_DATE)),
-    CONSTRAINT chk_color_format CHECK (brand_color ~ '^#[0-9A-Fa-f]{6}$' OR brand_color IS NULL)
+    CONSTRAINT chk_founded_year CHECK (founded_year >= 1000 AND founded_year <= YEAR(CURDATE())),
+    CONSTRAINT chk_color_format CHECK (brand_color REGEXP '^#[0-9A-Fa-f]{6}$' OR brand_color IS NULL)
 );
 
--- Index for URL lookups
 CREATE INDEX idx_brand_slug ON brand(url_slug);
-
--- Index for featured brands display
-CREATE INDEX idx_brand_featured ON brand(featured_priority) WHERE is_active = TRUE;
+CREATE INDEX idx_brand_featured ON brand(featured_priority);
 
 -- Function for updating timestamp
 CREATE OR REPLACE FUNCTION update_brand_timestamp()
