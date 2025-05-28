@@ -153,20 +153,20 @@ Defines types of attributes with validation rules.
 
 1. **Setup the Database**:
    ```bash
-   # Create a new PostgreSQL database
-   createdb erp_product_management
+   # Create a new MySQL database
+   mysql -u root -p -e "CREATE DATABASE erp_product_management;"
    
    # Run the SQL files in the following order:
-   psql -d erp_product_management -f brand.sql
-   psql -d erp_product_management -f product_category.sql
-   psql -d erp_product_management -f attribute_category.sql
-   psql -d erp_product_management -f attribute_type.sql
-   psql -d erp_product_management -f product_item.sql
-   psql -d erp_product_management -f size_category.sql
-   psql -d erp_product_management -f size_option.sql
-   psql -d erp_product_management -f product_variation.sql
-   psql -d erp_product_management -f product_attribute.sql
-   psql -d erp_product_management -f product_image.sql
+   mysql -u root -p erp_product_management < brand.sql
+   mysql -u root -p erp_product_management < product_category.sql
+   mysql -u root -p erp_product_management < attribute_category.sql
+   mysql -u root -p erp_product_management < attribute_type.sql
+   mysql -u root -p erp_product_management < product_item.sql
+   mysql -u root -p erp_product_management < size_category.sql
+   mysql -u root -p erp_product_management < size_option.sql
+   mysql -u root -p erp_product_management < product_variation.sql
+   mysql -u root -p erp_product_management < product_attribute.sql
+   mysql -u root -p erp_product_management < product_image.sql
    ```
 
 2. **Test It Out**:
@@ -182,17 +182,27 @@ Defines types of attributes with validation rules.
    VALUES (1, 1, 'Amazing Gadget', 'This gadget will change your life!', 'AG-001', 'amazing-gadget', 499.99);
    ```
 
+## 📝 Requirements
+
+Create a `requirements.txt` file if you plan to use Python scripts for database management or automation. Example:
+
+```
+mysql-connector-python
+sqlalchemy
+pandas
+```
+
 ## 🎓 Course Information
 
 **Course**: Database Systems  
-**Trainors**: Dr. Data Wizard  
+**Trainer**: Mr. Zablon 
 **Cohort**: Feb 2025  
 **Program**: Powerlearn Project
 
 ## 📝 Notes on Implementation
 
-- Designed for PostgreSQL 14+
-- Uses advanced features like JSON/JSONB, array types, and full-text search
+- Designed for MySQL 8+
+- Uses advanced features like JSON, generated columns, and full-text search
 - Implements best practices for database design and optimization
 - Includes comprehensive documentation in SQL comments
 
@@ -202,4 +212,4 @@ We had a blast creating this database schema and learned so much in the process!
 
 ---
 
-*"In SQL we trust, but we always verify with a good WHERE clause!"* - The ERP Team
+*"In SQL we trust, but we always verify with a good WHERE clause!"* - Group 596
