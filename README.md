@@ -195,7 +195,7 @@ pandas
 ## 🎓 Course Information
 
 **Course**: Database Systems  
-**Trainors**: Dr. Data Wizard  
+**Trainors**: Mr. Zablon   
 **Cohort**: Feb 2025  
 **Program**: Powerlearn Project
 
