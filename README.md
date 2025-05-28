@@ -195,7 +195,7 @@ pandas
 ## 🎓 Course Information
 
 **Course**: Database Systems  
-**Trainer**: Mr. Zablon 
+**Trainors**: Dr. Data Wizard  
 **Cohort**: Feb 2025  
 **Program**: Powerlearn Project
 
@@ -212,4 +212,4 @@ We had a blast creating this database schema and learned so much in the process!
 
 ---
 
-*"In SQL we trust, but we always verify with a good WHERE clause!"* - Group 596
+*"In SQL we trust, but we always verify with a good WHERE clause!"* - The ERP Team
